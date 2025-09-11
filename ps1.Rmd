@@ -1,6 +1,6 @@
 ---
 title: "Problem Set 1"
-author: "Your Name"
+author: "Ananya Mahtani"
 date: "`r Sys.Date()`"
 output: github_document
 ---
@@ -40,6 +40,13 @@ This section will test your understanding of basic R syntax, data types, and vec
 
 ```{r}
 # Your code here
+course_name <- "Introduction to Data Science"
+num_students<- 45
+pi_value<- 3.14159
+is_active<- TRUE
+
+print(num_students>50)
+print(course_name=="introduction to data science")
 ```
 
 ---
@@ -53,6 +60,12 @@ This section will test your understanding of basic R syntax, data types, and vec
 
 ```{r}
 # Your code here
+temperatures <- c(22, 25, 19, 28, 23)
+sum(temperatures)
+mean(temperatures)
+temperatures <- c(22, 25, 19, 28, 23, 30)
+is_hot <- temperatures>25 
+print(is_hot)
 ```
 
 ---
@@ -69,15 +82,22 @@ This section focuses on applying core `dplyr` verbs to the classic `mtcars` data
 
 ```{r}
 # Pre-processing step: Convert rownames to car_model
-mtcars_processed <- mtcars %>%
+mtcars_processed <- mtcars %>% 
   rownames_to_column("car_model")
 
 # Your code starts here: Filter and arrange mtcars_processed
 # Your code here
+
+mtcars_processed %>% 
+  filter((cyl==4|cyl==6) & (mpg>20)) %>%
+  arrange(mpg, desc(cyl))
+
 ```
 
 ### Short Answer
 Based on your filtered and arranged results, briefly describe the characteristics of the cars that appear at the top of your output. What does this tell you about the relationship between cylinders and miles per gallon in this subset?
+
+Whether or not cylinders in descending order were included as an attribute to arrange by in addition to miles per gallon in ascending order did not make a difference to the order of the data. This indicates that cars with lower miles per gallon are more likely to have a higher number of cylinders anyways. 
 
 ---
 
@@ -94,6 +114,13 @@ Using the `mtcars_processed` dataset:
 
 ```{r}
 # Your code here
+
+mtcars_processed%>% mutate(hp_per_wt= hp/wt) %>% 
+  mutate(qsec_category= case_when(
+    qsec<17 ~ 'Fast',
+    qsec>=17 ~ 'Medium',
+    qsec>=19 ~ 'Slow'
+  )) %>% select(car_model, mpg, hp, wt, hp_per_wt, qsec_category)
 ```
 
 ### Short Answer
@@ -111,6 +138,8 @@ Using the `mtcars_processed` dataset:
 
 ```{r}
 # Your code here
+mtcars_processed %>% 
+  group_by(cyl, am) %>% summarize(avg_mpg=mean(mpg), med_hp=median(hp), num_cars=n()) %>% arrange(cyl, desc(avg_mpg))
 ```
 
 ### Short Answer
@@ -167,22 +196,32 @@ This task demonstrates how creating new variables that depend on previous time p
 
 ```{r}
 # Your code here
+product_sales_wide %>% 
+  mutate(Growth_2021=((Year_2021 - Year_2020) / Year_2020 * 100), Growth_2022=((Year_2022 - Year_2021) / Year_2021 * 100))
+
 ```
 
 2.  **Reshape to Long Format:** Reshape `product_sales_wide` into a long format called `product_sales_long`. Pivot the year columns (`Year_2020`, `Year_2021`, `Year_2022`) into two new columns: `Year` and `Sales`. Make sure `Year` is numeric.
 
 ```{r}
 # Your code here
+product_sales_long<- product_sales_wide %>% 
+  pivot_longer(c('Year_2020', 'Year_2021', 'Year_2022'), names_to= 'Year', values_to='Sales') %>% 
+  mutate(Year = as.numeric(gsub("Year_", "", Year)))
+  
+product_sales_long
+
 ```
 3.  **Analysis in Long Format:** Using the `product_sales_long` dataset, calculate a single `Growth_Rate` column that represents the year-over-year growth for each product. You should use `group_by()` and `lag()`. The formula for growth rate is `(current_year_sales - previous_year_sales) / previous_year_sales * 100`.
 
 ```{r}
-# Your code here
+product_sales_long %>% group_by(product) %>% arrange(product, Year)%>% mutate(growth_rate= (Sales-lag(Sales))/lag(Sales)*100)
 ```
 
 ### Short Answer
 Compare the code required to calculate the year-over-year growth rate in the wide format versus the long format. Which approach is more concise and scalable if you had many more years of data? Why is the long format generally preferred for this type of time-series calculation?
 
+The long format is much more scalable because each observation has its own row, allowing you to easily calculate year-over-year growth using functions like lag() once the data is arranged by time. In contrast, the wide format stores values for different years in separate columns, so comparing across years requires manually referencing and subtracting specific columns. This makes the code harder to generalize and automate as the number of years increases. For time-series calculations, the long format is generally preferred because it keeps the structure consistent and simplifies both the logic and scalability of the analysis.
 ---
 
 ### Task 2.2: Mutating Joins: Student Demographics and Grades
@@ -195,14 +234,25 @@ This task explores combining student demographic information with their academic
 
 ```{r}
 # Your code for inner_join and its explanation
+student_grades %>% inner_join(students_demographics, by="student_id")
+```
+
 ```{r}
-# Your code for left_join and its explanation
+student_grades %>% left_join(students_demographics, by ="student_id")
+
+```
+
 ```{r}
 # Your code for advanced mutate after left join
+student_grades %>% left_join(students_demographics, by ="student_id")%>% group_by(student_id, student_name)%>% summarize(average_grade= mean(grade_score))
+
+
 ```
 
 ### Short Answer
 Compare the number of rows and the content of the `inner_join()` and `left_join()` results. Specifically, identify which student(s) are present in one join but not the other, and explain why. What does the average grade calculation reveal about students with multiple grades or no grades?
+ 
+The inner_join has less rows than the left_join, since the inner join only outputs observations matched in both datasets. The average grade calculation also reveals that for students with only one grade entry, the average column is a duplicate. We are therefore able to tell when a student has multiple grades, as the average differs from each individual grade given the limited entries. 
 
 ---
 
@@ -216,14 +266,27 @@ This task focuses on using filtering joins to identify different categories of s
 
 ```{r}
 # Your code for question 1 (semi_join)
+students_demographics%>% semi_join(student_grades, by= 'student_id')
+
+
+```
+
 ```{r}
 # Your code for question 2 (anti_join on students_demographics)
+students_demographics%>% anti_join(student_grades, by= 'student_id')
+
+
+```
+
 ```{r}
 # Your code for question 3 (anti_join on student_grades)
+student_grades%>% anti_join(students_demographics, by= 'student_id')
+
 ```
 
 ### Short Answer
 Describe the distinct insights gained from each of the three filtering joins in this task. How do these joins help in data validation and understanding the completeness of your student records?
 
+The semi_join tells us students with valid grade records, while the first anti_join outlines a part of which students are omitted from the previous set. The second anti_join conpletes this, as it outlines which students have grades, but not demographics listed, in addition to what the previous anti_join outlines, which is the students who have demoographics, but no grades. Together, they validate the valud data entries outputted in the semi_join.
 
 
